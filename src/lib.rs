@@ -21,8 +21,12 @@ token -> Token
   = hex_token_with_prefix
   / ipv4_token
   / mac_token
+  / float_token
   / int_token
   / hex_token_without_prefix
+
+float_token -> Token
+    = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
 
 hex_token_with_prefix -> Token
     = hex_prefix hex_char+ { Token::HexString(match_str.to_string()) }
@@ -91,6 +95,14 @@ mod tests {
       assert_eq!(&expected, &token);
     }
 
+    fn assert_float_token_is_valid(message: &str) {
+      let expected =  vec![Token::Float(message.to_string())];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid Float token");
+      assert_eq!(&expected, &token);
+    }
+
     #[test]
     fn test_given_tokenizer_when_it_parses_a_mac_address_then_we_got_the_mac_token() {
         assert_mac_token_is_valid("56:84:7a:fe:97:99");
@@ -149,5 +161,15 @@ mod tests {
     #[allow(non_snake_case)]
     fn test_given_tokenizer_when_it_parses_a_hex_string_with_0X_prefix_then_we_het_the_hex_string_token() {
         assert_hex_string_token_is_valid("0Xff034");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_float_token_then_we_get_the_float_token() {
+        assert_float_token_is_valid("3.14");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_float_token_with_exponent_then_we_get_the_float_token() {
+        assert_float_token_is_valid("3.14e0");
     }
 }
