@@ -10,7 +10,6 @@ pub enum Token {
     HexString(String),
     MAC(String),
     IPv4(String),
-    IPv6(String)
 }
 peg! tokenizer(r##"
 use super::Token;
