@@ -16,7 +16,7 @@ peg! tokenizer(r##"
 use super::Token;
 
 #[pub]
-message -> Vec<Token> = token*
+message -> Vec<Token> = token ** space
 
 token -> Token
   = mac_token
@@ -43,6 +43,9 @@ hex_char2 -> &'input str
 
 hex_char -> &'input str
   = [0-9a-fA-F] { match_str }
+
+space -> &'input str
+    = " "+ { match_str }
 
 "##);
 
@@ -76,6 +79,19 @@ mod tests {
       let result = tokenizer::message(message);
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid Int token");
+      assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_tokens_separated_with_space_characters_then_we_got_the_tokens() {
+      let message = "42 56:84:7a:fe:97:99";
+      let expected = vec![
+        Token::Int("42".to_string()),
+        Token::MAC("56:84:7a:fe:97:99".to_string()),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when it contains spaces");
       assert_eq!(&expected, &token);
     }
 }
