@@ -18,21 +18,17 @@ use super::Token;
 message -> Vec<Token> = token ** space
 
 token -> Token
-  = hex_token_with_prefix
+  = hex_token
   / ipv4_token
   / mac_token
   / float_token
   / int_token
-  / hex_token_without_prefix
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
 
-hex_token_with_prefix -> Token
+hex_token -> Token
     = hex_prefix hex_char+ { Token::HexString(match_str.to_string()) }
-
-hex_token_without_prefix -> Token
-    = hex_char+ { Token::HexString(match_str.to_string()) }
 
 hex_prefix
     = "0" [xX]
@@ -51,23 +47,29 @@ int_token -> Token
   = [0-9]+ { Token::Int(match_str.to_string()) }
 
 mac_token -> Token
-  = mac_general { Token::MAC(match_str.to_string()) }
-  / mac_cisco { Token::MAC(match_str.to_string()) }
+  = mac_general_token { Token::MAC(match_str.to_string()) }
+  / mac_cisco_token { Token::MAC(match_str.to_string()) }
+
+mac_general_token -> &'input str
+  = &(mac_general) t:mac_general{ t }
 
 mac_general -> &'input str
-  = hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 { match_str }
+    = hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 { match_str }
+
+mac_cisco_token -> &'input str
+  = &mac_cisco t:mac_cisco { t }
 
 mac_cisco -> &'input str
-  = hex_char4 "." hex_char4 "." hex_char4 { match_str }
+    = hex_char4 "." hex_char4 "." hex_char4 { match_str }
 
 hex_char4 -> &'input str
-  = hex_char hex_char hex_char hex_char { match_str }
+  = &(hex_char2 hex_char2) hex_char2 hex_char2 { match_str }
 
 hex_char2 -> &'input str
-  = hex_char hex_char { match_str }
+  = &(hex_char hex_char) hex_char hex_char { match_str }
 
 hex_char -> &'input str
-  = [0-9a-fA-F] { match_str }
+  = &[0-9a-fA-F] [0-9a-fA-F] { match_str }
 
 space -> &'input str
     = " "+ { match_str }
@@ -145,11 +147,6 @@ mod tests {
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid IPv4 token");
       assert_eq!(&expected, &token);
-    }
-
-    #[test]
-    fn test_given_tokenizer_when_it_parses_a_hex_string_then_we_het_the_hex_string_token() {
-        assert_hex_string_token_is_valid("ff034");
     }
 
     #[test]
