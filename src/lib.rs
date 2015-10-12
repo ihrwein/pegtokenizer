@@ -5,6 +5,7 @@
 pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
+    Paren(Vec<Token>),
     Literal(String),
     Float(String),
     Int(String),
@@ -23,6 +24,7 @@ token_seq -> Vec<Token> = token ** space
 token -> Token
   = brace_token
   / bracket_token
+  / paren_token
   / hex_token
   / ipv4_token
   / mac_token
@@ -39,6 +41,9 @@ brace_token -> Token
 
 bracket_token -> Token
     = "[" tokens:token_seq "]" { Token::Bracket(tokens) }
+
+paren_token -> Token
+    = "(" tokens:token_seq ")" { Token::Paren(tokens) }
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
@@ -223,6 +228,21 @@ mod tests {
       let result = tokenizer::message(message);
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid message when it contains brackets");
+      assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_tokens_in_parentheses_then_we_get_the_expected_composite_token() {
+      let message = "(42 0x12)";
+      let expected = vec![
+        Token::Paren(vec![
+            Token::Int("42".to_string()),
+            Token::HexString("0x12".to_string()),
+        ])
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when it contains parentheses");
       assert_eq!(&expected, &token);
     }
 }
