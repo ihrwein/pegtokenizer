@@ -46,22 +46,36 @@ hex_char -> &'input str
 
 "##);
 
-#[test]
-fn test_given_tokenizer_when_it_parses_a_mac_address_then_we_got_the_mac_token() {
-  let message = "56:84:7a:fe:97:99";
-  let expected =  vec![Token::MAC("56:84:7a:fe:97:99".to_string())];
-  let result = tokenizer::message(message);
-  println!("{:?}", &result);
-  let token = result.ok().expect("Failed to parse a valid MAC address");
-  assert_eq!(&expected, &token);
-}
+#[cfg(test)]
+mod tests {
+    use tokenizer;
+    use Token;
 
-#[test]
-fn test_given_tokenizer_when_it_parses_an_integer_then_we_get_the_int_token() {
-  let message = "42";
-  let expected =  vec![Token::Int("42".to_string())];
-  let result = tokenizer::message(message);
-  println!("{:?}", &result);
-  let token = result.ok().expect("Failed to parse a valid Int token");
-  assert_eq!(&expected, &token);
+    fn assert_mac_token_eq(message: &str) {
+      let expected =  vec![Token::MAC(message.to_string())];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid MAC address");
+      assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_mac_address_then_we_got_the_mac_token() {
+        assert_mac_token_eq("56:84:7a:fe:97:99");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parser_a_cisco_mac_address_then_we_get_the_mac_token() {
+        assert_mac_token_eq("0011.434A.B862");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_an_integer_then_we_get_the_int_token() {
+      let message = "42";
+      let expected =  vec![Token::Int("42".to_string())];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid Int token");
+      assert_eq!(&expected, &token);
+    }
 }
