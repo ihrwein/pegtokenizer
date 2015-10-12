@@ -18,9 +18,20 @@ use super::Token;
 message -> Vec<Token> = token ** space
 
 token -> Token
-  = ipv4_token
+  = hex_token_with_prefix
+  / ipv4_token
   / mac_token
   / int_token
+  / hex_token_without_prefix
+
+hex_token_with_prefix -> Token
+    = hex_prefix hex_char+ { Token::HexString(match_str.to_string()) }
+
+hex_token_without_prefix -> Token
+    = hex_char+ { Token::HexString(match_str.to_string()) }
+
+hex_prefix
+    = "0" [xX]
 
 ipv4_token -> Token
     = octet "." octet "." octet "." octet { Token::IPv4(match_str.to_string()) }
@@ -72,6 +83,14 @@ mod tests {
       assert_eq!(&expected, &token);
     }
 
+    fn assert_hex_string_token_is_valid(message: &str) {
+      let expected =  vec![Token::HexString(message.to_string())];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid HexString token");
+      assert_eq!(&expected, &token);
+    }
+
     #[test]
     fn test_given_tokenizer_when_it_parses_a_mac_address_then_we_got_the_mac_token() {
         assert_mac_token_is_valid("56:84:7a:fe:97:99");
@@ -114,5 +133,21 @@ mod tests {
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid IPv4 token");
       assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_hex_string_then_we_het_the_hex_string_token() {
+        assert_hex_string_token_is_valid("ff034");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_hex_string_with_0x_prefix_then_we_get_the_hex_string_token() {
+        assert_hex_string_token_is_valid("0xff034");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_given_tokenizer_when_it_parses_a_hex_string_with_0X_prefix_then_we_het_the_hex_string_token() {
+        assert_hex_string_token_is_valid("0Xff034");
     }
 }
