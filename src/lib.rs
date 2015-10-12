@@ -23,6 +23,11 @@ token -> Token
   / mac_token
   / float_token
   / int_token
+  / literal_token
+
+literal_token -> Token
+    = (!" " .)+ { Token::Literal(match_str.to_string()) }
+    / .+ { Token::Literal(match_str.to_string()) }
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
@@ -168,5 +173,15 @@ mod tests {
     #[test]
     fn test_given_tokenizer_when_it_parses_a_float_token_with_exponent_then_we_get_the_float_token() {
         assert_float_token_is_valid("3.14e0");
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_there_is_no_other_higher_precedence_match_it_creates_literal_tokens() {
+        let message = "foo";
+        let expected =  vec![Token::Literal("foo".to_string())];
+        let result = tokenizer::message(message);
+        println!("{:?}", &result);
+        let token = result.ok().expect("Failed to parse a valid literal token");
+        assert_eq!(&expected, &token);
     }
 }
