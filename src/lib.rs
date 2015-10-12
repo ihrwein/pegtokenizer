@@ -19,8 +19,19 @@ use super::Token;
 message -> Vec<Token> = token ** space
 
 token -> Token
-  = mac_token
+  = ipv4_token
+  / mac_token
   / int_token
+
+ipv4_token -> Token
+    = octet "." octet "." octet "." octet { Token::IPv4(match_str.to_string()) }
+
+octet
+    = "25" [0-5]
+    / "2" [0-4][0-9]
+    / "1" [0-9][0-9]
+    / [1-9][0-9]
+    / [0-9]
 
 int_token -> Token
   = [0-9]+ { Token::Int(match_str.to_string()) }
@@ -84,14 +95,25 @@ mod tests {
 
     #[test]
     fn test_given_tokenizer_when_it_parses_tokens_separated_with_space_characters_then_we_got_the_tokens() {
-      let message = "42 56:84:7a:fe:97:99";
+      let message = "42 56:84:7a:fe:97:99 192.168.0.1";
       let expected = vec![
         Token::Int("42".to_string()),
         Token::MAC("56:84:7a:fe:97:99".to_string()),
+        Token::IPv4("192.168.0.1".to_string()),
       ];
       let result = tokenizer::message(message);
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid message when it contains spaces");
+      assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_an_ipv4_address_then_we_get_an_ipv4_token() {
+      let message = "127.0.0.1";
+      let expected =  vec![Token::IPv4("127.0.0.1".to_string())];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid IPv4 token");
       assert_eq!(&expected, &token);
     }
 }
