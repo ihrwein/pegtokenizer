@@ -64,7 +64,7 @@ mod tests {
     use tokenizer;
     use Token;
 
-    fn assert_mac_token_eq(message: &str) {
+    fn assert_mac_token_is_valid(message: &str) {
       let expected =  vec![Token::MAC(message.to_string())];
       let result = tokenizer::message(message);
       println!("{:?}", &result);
@@ -74,12 +74,12 @@ mod tests {
 
     #[test]
     fn test_given_tokenizer_when_it_parses_a_mac_address_then_we_got_the_mac_token() {
-        assert_mac_token_eq("56:84:7a:fe:97:99");
+        assert_mac_token_is_valid("56:84:7a:fe:97:99");
     }
 
     #[test]
     fn test_given_tokenizer_when_it_parser_a_cisco_mac_address_then_we_get_the_mac_token() {
-        assert_mac_token_eq("0011.434A.B862");
+        assert_mac_token_is_valid("0011.434A.B862");
     }
 
     #[test]
