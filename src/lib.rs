@@ -3,7 +3,7 @@
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Token {
-    Other(String),
+    Brace(Vec<Token>),
     Literal(String),
     Float(String),
     Int(String),
@@ -15,10 +15,13 @@ peg! tokenizer(r##"
 use super::Token;
 
 #[pub]
-message -> Vec<Token> = token ** space
+message -> Vec<Token> = token_seq
+
+token_seq -> Vec<Token> = token ** space
 
 token -> Token
-  = hex_token
+  = brace_token
+  / hex_token
   / ipv4_token
   / mac_token
   / float_token
@@ -28,6 +31,9 @@ token -> Token
 literal_token -> Token
     = (!" " .)+ { Token::Literal(match_str.to_string()) }
     / .+ { Token::Literal(match_str.to_string()) }
+
+brace_token -> Token
+    = "{" tokens:token_seq "}" { Token::Brace(tokens) }
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
@@ -183,5 +189,20 @@ mod tests {
         println!("{:?}", &result);
         let token = result.ok().expect("Failed to parse a valid literal token");
         assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_tokens_in_braces_then_we_get_the_expected_composite_token() {
+      let message = "{42 0x12}";
+      let expected = vec![
+        Token::Brace(vec![
+            Token::Int("42".to_string()),
+            Token::HexString("0x12".to_string()),
+        ])
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when it contains braces");
+      assert_eq!(&expected, &token);
     }
 }
