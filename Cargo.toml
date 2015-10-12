@@ -1,0 +1,7 @@
+[package]
+name = "pegtokenizer"
+version = "0.1.0"
+authors = ["Tibor Benke <tibor.benke@balabit.com>"]
+
+[dependencies]
+peg = "0.3"
