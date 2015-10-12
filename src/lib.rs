@@ -33,7 +33,7 @@ mac_general -> &'input str
   = hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 ":" hex_char2 { match_str }
 
 mac_cisco -> &'input str
-  = hex_char4 ":" hex_char4 ":" hex_char4 { match_str }
+  = hex_char4 "." hex_char4 "." hex_char4 { match_str }
 
 hex_char4 -> &'input str
   = hex_char hex_char hex_char hex_char { match_str }
