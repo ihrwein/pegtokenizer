@@ -373,7 +373,7 @@ mod tests {
       ];
       let result = tokenizer::message(message);
       println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
+      let token = result.ok().expect("Failed to parse a valid key-value pair when the value is a composite token");
       assert_eq!(&expected, &token);
   }
 }
