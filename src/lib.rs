@@ -6,7 +6,7 @@ pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
     Paren(Vec<Token>),
-    KVPair(Box<Token>, Box<Token>),
+    KVPair(Box<Token>, Vec<Token>),
     Literal(String),
     Float(String),
     Int(String),
@@ -42,7 +42,7 @@ composite_token -> Token
   / token:kvpair_token { token }
 
 kvpair_token -> Token
-    = st0:simple_token "=" st1:simple_token { Token::KVPair(Box::new(st0), Box::new(st1)) }
+    = st0:simple_token "=" t:token+ { Token::KVPair(Box::new(st0), t) }
 
 simple_token -> Token
     = hex_token
@@ -293,7 +293,7 @@ mod tests {
             vec![
                 Token::KVPair(
                     Box::new(Token::Literal("xid".to_string())),
-                    Box::new(Token::HexString("0x37fe20e3".to_string()))
+                    vec![Token::HexString("0x37fe20e3".to_string())]
                 )
             ]
         )
@@ -321,7 +321,7 @@ mod tests {
         Token::Paren(vec![
             Token::KVPair(
                 Box::new(Token::Literal("xid".to_string())),
-                Box::new(Token::HexString("0x37fe20e3".to_string()))
+                vec![Token::HexString("0x37fe20e3".to_string())]
             )]
         ),
       ];
@@ -337,15 +337,15 @@ mod tests {
       let expected = vec![
         Token::KVPair(
             Box::new(Token::Literal("foo".to_string())),
-            Box::new(Token::Literal("bar".to_string()))
+            vec![Token::Literal("bar".to_string())]
         ),
         Token::KVPair(
             Box::new(Token::Literal("qux".to_string())),
-            Box::new(Token::Int("42".to_string()))
+            vec![Token::Int("42".to_string())]
         ),
         Token::KVPair(
             Box::new(Token::Int("42".to_string())),
-            Box::new(Token::Int("42".to_string()))
+            vec![Token::Int("42".to_string())]
         )
       ];
       let result = tokenizer::message(message);
@@ -354,4 +354,26 @@ mod tests {
       assert_eq!(&expected, &token);
   }
 
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_key_value_pair_and_the_value_is_not_a_simple_token_then_we_get_the_expected_tokens() {
+      let message = "msg=audit(1364481363.243:24287)";
+      let expected = vec![
+        Token::KVPair(
+            Box::new(Token::Literal("msg".to_string())),
+            vec![
+                Token::Literal("audit".to_string()),
+                Token::Paren(
+                    vec![
+                        Token::Float("1364481363.243".to_string()),
+                        Token::Int("24287".to_string())
+                    ]
+                )
+            ]
+        ),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
+      assert_eq!(&expected, &token);
+  }
 }
