@@ -20,7 +20,14 @@ use super::Token;
 
 #[pub]
 message -> Vec<Token>
-    = token+
+    = token_seq
+
+token_seq -> Vec<Token>
+    = token ** sepatator
+
+sepatator -> &'input str
+    = s:space { s }
+    / p:punctuation { p }
 
 token -> Token
     = token:composite_token { token }
@@ -37,32 +44,31 @@ simple_token -> Token
   / mac_token
   / float_token
   / int_token
-  / punctuation_token
   / space_token
   / literal_token
 
 space_token -> Token
-    = " " { Token::Space }
+    = " "+ { Token::Space }
 
 literal_token -> Token
     = (![{()}] !"[" !"]" !punctuation_token .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
-    = "{" tokens:token+ "}" { Token::Brace(tokens) }
+    = "{" tokens:token_seq "}" { Token::Brace(tokens) }
 
 bracket_token -> Token
-    = "[" tokens:token+ "]" { Token::Bracket(tokens) }
+    = "[" tokens:token_seq "]" { Token::Bracket(tokens) }
 
 paren_token -> Token
-    = "(" tokens:token+ ")" { Token::Paren(tokens) }
+    = "(" tokens:token_seq ")" { Token::Paren(tokens) }
 
 punctuation_token -> Token
-    = punctuations { Token::Punc(match_str.to_string()) }
+    = p:punctuation { Token::Punc(p.to_string()) }
 
-punctuations
-    = ";"
-    / ":"
-    / ","
+punctuation -> &'input str
+    = ";" { match_str }
+    / ":" { match_str }
+    / "," { match_str }
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
