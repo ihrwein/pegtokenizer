@@ -22,7 +22,10 @@ message -> Vec<Token>
     = token_seq
 
 token_seq -> Vec<Token>
-    = token ** separator
+    = token ** separators
+
+separators
+    = separator+
 
 separator -> &'input str
     = s:space { s }
@@ -50,7 +53,7 @@ simple_token -> Token
   / literal_token
 
 literal_token -> Token
-    = (![{()}] !"[" !"]" !separator !"=" .)+ { Token::Literal(match_str.to_string()) }
+    = (!"{" !"}" !"(" !")" !"[" !"]" !separator !"=" .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
@@ -300,5 +303,32 @@ mod tests {
       let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
       assert_eq!(&expected, &token);
     }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_a_log_message_then_we_get_the_expected_tokens() {
+      let message = "dhclient: DHCPREQUEST of 10.30.0.97 on eth0 to 255.255.255.255 port 67 (xid=0x37fe20e3)";
+      let expected = vec![
+        Token::Literal("dhclient".to_string()),
+        Token::Literal("DHCPREQUEST".to_string()),
+        Token::Literal("of".to_string()),
+        Token::IPv4("10.30.0.97".to_string()),
+        Token::Literal("on".to_string()),
+        Token::Literal("eth0".to_string()),
+        Token::Literal("to".to_string()),
+        Token::IPv4("255.255.255.255".to_string()),
+        Token::Literal("port".to_string()),
+        Token::Int("67".to_string()),
+        Token::Paren(vec![
+            Token::KVPair(
+                Box::new(Token::Literal("xid".to_string())),
+                Box::new(Token::HexString("0x37fe20e3".to_string()))
+            )]
+        ),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid log message");
+      assert_eq!(&expected, &token);
+  }
 
 }
