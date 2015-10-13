@@ -8,6 +8,7 @@ pub enum Token {
     Paren(Vec<Token>),
     KVPair(Box<Token>, Vec<Token>),
     Literal(String),
+    QuotedLiteral(String),
     Float(String),
     Int(String),
     HexString(String),
@@ -50,7 +51,12 @@ simple_token -> Token
   / mac_token
   / float_token
   / int_token
+  / quoted_literal_token
   / literal_token
+
+quoted_literal_token -> Token
+    = "\"" (!"\"" .)+ "\"" { Token::QuotedLiteral(match_str.to_string()) }
+    / "'" (!"'" .)+ "'" { Token::QuotedLiteral(match_str.to_string()) }
 
 literal_token -> Token
     = (!"{" !"}" !"(" !")" !"[" !"]" !separator !"=" .)+ { Token::Literal(match_str.to_string()) }
@@ -374,6 +380,40 @@ mod tests {
       let result = tokenizer::message(message);
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid key-value pair when the value is a composite token");
+      assert_eq!(&expected, &token);
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_quoted_string_then_we_get_the_expected_token() {
+      let message = r#"exe="/bin/cat""#;
+      let expected = vec![
+        Token::KVPair(
+            Box::new(Token::Literal("exe".to_string())),
+            vec![
+                Token::QuotedLiteral(r#""/bin/cat""#.to_string()),
+            ]
+        ),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when it contains \" quoted string");
+      assert_eq!(&expected, &token);
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_quoted_string_with_apostrophe_then_we_get_the_expected_token() {
+      let message = r#"exe='/bin/cat'"#;
+      let expected = vec![
+        Token::KVPair(
+            Box::new(Token::Literal("exe".to_string())),
+            vec![
+                Token::QuotedLiteral(r#"'/bin/cat'"#.to_string()),
+            ]
+        ),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when it contains \" quoted string");
       assert_eq!(&expected, &token);
   }
 }
