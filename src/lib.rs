@@ -331,4 +331,27 @@ mod tests {
       assert_eq!(&expected, &token);
   }
 
+  #[test]
+  fn test_given_tokenizer_when_it_parses_key_value_pairs_in_sequence_then_we_get_the_expected_tokens() {
+      let message = "foo=bar qux=42 42=42";
+      let expected = vec![
+        Token::KVPair(
+            Box::new(Token::Literal("foo".to_string())),
+            Box::new(Token::Literal("bar".to_string()))
+        ),
+        Token::KVPair(
+            Box::new(Token::Literal("qux".to_string())),
+            Box::new(Token::Int("42".to_string()))
+        ),
+        Token::KVPair(
+            Box::new(Token::Int("42".to_string())),
+            Box::new(Token::Int("42".to_string()))
+        )
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
+      assert_eq!(&expected, &token);
+  }
+
 }
