@@ -132,28 +132,26 @@ mod tests {
     use tokenizer;
     use Token;
 
-    fn assert_mac_token_is_valid(message: &str) {
-      let expected =  vec![Token::MAC(message.to_string())];
+    fn parse_and_assert_eq(message: &str, expected: Vec<Token>, error_message: &str) {
       let result = tokenizer::message(message);
       println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid MAC address");
+      let token = result.unwrap_or_else(|err| panic!("{} {:?}", error_message, err));
       assert_eq!(&expected, &token);
+    }
+
+    fn assert_mac_token_is_valid(message: &str) {
+      let expected =  vec![Token::MAC(message.to_string())];
+      parse_and_assert_eq(message, expected, "Failed to parse a valid MAC address");
     }
 
     fn assert_hex_string_token_is_valid(message: &str) {
       let expected =  vec![Token::HexString(message.to_string())];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid HexString token");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid HexString address");
     }
 
     fn assert_float_token_is_valid(message: &str) {
       let expected =  vec![Token::Float(message.to_string())];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid Float token");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid Float address");
     }
 
     #[test]
@@ -169,11 +167,8 @@ mod tests {
     #[test]
     fn test_given_tokenizer_when_it_parses_an_integer_then_we_get_the_int_token() {
       let message = "42";
-      let expected =  vec![Token::Int("42".to_string())];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid Int token");
-      assert_eq!(&expected, &token);
+      let expected =  vec![Token::Int(message.to_string())];
+      parse_and_assert_eq(message, expected, "Failed to parse a valid Int address");
     }
 
     #[test]
@@ -184,20 +179,14 @@ mod tests {
         Token::MAC("56:84:7a:fe:97:99".to_string()),
         Token::IPv4("192.168.0.1".to_string()),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains spaces");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains spaces");
     }
 
     #[test]
     fn test_given_tokenizer_when_it_parses_an_ipv4_address_then_we_get_an_ipv4_token() {
       let message = "127.0.0.1";
       let expected =  vec![Token::IPv4("127.0.0.1".to_string())];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid IPv4 token");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid IPv4 token");
     }
 
     #[test]
@@ -225,10 +214,7 @@ mod tests {
     fn test_given_tokenizer_when_there_is_no_other_higher_precedence_match_it_creates_literal_tokens() {
         let message = "foo";
         let expected =  vec![Token::Literal("foo".to_string())];
-        let result = tokenizer::message(message);
-        println!("{:?}", &result);
-        let token = result.ok().expect("Failed to parse a valid literal token");
-        assert_eq!(&expected, &token);
+        parse_and_assert_eq(message, expected, "Failed to parse a valid literal token");
     }
 
     #[test]
@@ -240,10 +226,7 @@ mod tests {
             Token::HexString("0x12".to_string()),
         ])
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains braces");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains braces");
     }
 
     #[test]
@@ -255,10 +238,7 @@ mod tests {
             Token::HexString("0x12".to_string()),
         ])
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains brackets");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains brackets");
     }
 
     #[test]
@@ -270,10 +250,7 @@ mod tests {
             Token::HexString("0x12".to_string()),
         ])
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains parentheses");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains parentheses");
     }
 
     #[test]
@@ -285,10 +262,7 @@ mod tests {
         Token::Literal("foo".to_string()),
         Token::Literal("bar".to_string()),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when the tokens are separated with punctuation marks");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when the tokens are separated with punctuation marks");
     }
 
     #[test]
@@ -304,10 +278,7 @@ mod tests {
             ]
         )
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when the tokens are in parens");
     }
 
     #[test]
@@ -331,10 +302,7 @@ mod tests {
             )]
         ),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid log message");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid log message");
   }
 
   #[test]
@@ -354,10 +322,7 @@ mod tests {
             vec![Token::Int("42".to_string())]
         )
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid key-value pairs");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pairs");
   }
 
   #[test]
@@ -377,10 +342,7 @@ mod tests {
             ]
         ),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid key-value pair when the value is a composite token");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pair when the value is a composite token");
   }
 
   #[test]
@@ -394,10 +356,7 @@ mod tests {
             ]
         ),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains \" quoted string");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains \" quoted string");
   }
 
   #[test]
@@ -411,9 +370,6 @@ mod tests {
             ]
         ),
       ];
-      let result = tokenizer::message(message);
-      println!("{:?}", &result);
-      let token = result.ok().expect("Failed to parse a valid message when it contains \" quoted string");
-      assert_eq!(&expected, &token);
+      parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains \" quoted string");
   }
 }
