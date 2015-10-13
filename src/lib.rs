@@ -6,6 +6,7 @@ pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
     Paren(Vec<Token>),
+    KVPair(Box<Token>, Box<Token>),
     Literal(String),
     Float(String),
     Int(String),
@@ -21,9 +22,9 @@ message -> Vec<Token>
     = token_seq
 
 token_seq -> Vec<Token>
-    = token ** sepatator
+    = token ** separator
 
-sepatator -> &'input str
+separator -> &'input str
     = s:space { s }
     / p:punctuation { p }
 
@@ -35,6 +36,10 @@ composite_token -> Token
     = token:brace_token { token }
   / token:bracket_token { token }
   / token:paren_token { token }
+  / token:kvpair_token { token }
+
+kvpair_token -> Token
+    = st0:simple_token "=" st1:simple_token { Token::KVPair(Box::new(st0), Box::new(st1)) }
 
 simple_token -> Token
     = hex_token
@@ -45,7 +50,7 @@ simple_token -> Token
   / literal_token
 
 literal_token -> Token
-    = (![{()}] !"[" !"]" !punctuation .)+ { Token::Literal(match_str.to_string()) }
+    = (![{()}] !"[" !"]" !separator !"=" .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
@@ -276,4 +281,24 @@ mod tests {
       let token = result.ok().expect("Failed to parse a valid message when the tokens are separated with punctuation marks");
       assert_eq!(&expected, &token);
     }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_tokens_in_parens_then_we_get_the_expected_composite_token() {
+      let message = "(xid=0x37fe20e3)";
+      let expected = vec![
+        Token::Paren(
+            vec![
+                Token::KVPair(
+                    Box::new(Token::Literal("xid".to_string())),
+                    Box::new(Token::HexString("0x37fe20e3".to_string()))
+                )
+            ]
+        )
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when the tokens are in parens");
+      assert_eq!(&expected, &token);
+    }
+
 }
