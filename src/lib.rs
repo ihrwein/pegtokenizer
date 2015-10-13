@@ -6,14 +6,12 @@ pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
     Paren(Vec<Token>),
-    Punc(String),
     Literal(String),
     Float(String),
     Int(String),
     HexString(String),
     MAC(String),
     IPv4(String),
-    Space
 }
 peg! tokenizer(r##"
 use super::Token;
@@ -44,14 +42,10 @@ simple_token -> Token
   / mac_token
   / float_token
   / int_token
-  / space_token
   / literal_token
 
-space_token -> Token
-    = " "+ { Token::Space }
-
 literal_token -> Token
-    = (![{()}] !"[" !"]" !punctuation_token .)+ { Token::Literal(match_str.to_string()) }
+    = (![{()}] !"[" !"]" !punctuation .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
@@ -61,9 +55,6 @@ bracket_token -> Token
 
 paren_token -> Token
     = "(" tokens:token_seq ")" { Token::Paren(tokens) }
-
-punctuation_token -> Token
-    = p:punctuation { Token::Punc(p.to_string()) }
 
 punctuation -> &'input str
     = ";" { match_str }
@@ -176,9 +167,7 @@ mod tests {
       let message = "42 56:84:7a:fe:97:99 192.168.0.1";
       let expected = vec![
         Token::Int("42".to_string()),
-        Token::Space,
         Token::MAC("56:84:7a:fe:97:99".to_string()),
-        Token::Space,
         Token::IPv4("192.168.0.1".to_string()),
       ];
       let result = tokenizer::message(message);
@@ -234,7 +223,6 @@ mod tests {
       let expected = vec![
         Token::Brace(vec![
             Token::Int("42".to_string()),
-            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
@@ -250,7 +238,6 @@ mod tests {
       let expected = vec![
         Token::Bracket(vec![
             Token::Int("42".to_string()),
-            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
@@ -266,7 +253,6 @@ mod tests {
       let expected = vec![
         Token::Paren(vec![
             Token::Int("42".to_string()),
-            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
@@ -281,11 +267,8 @@ mod tests {
       let message = "42,0x12:foo;bar";
       let expected = vec![
         Token::Int("42".to_string()),
-        Token::Punc(",".to_string()),
         Token::HexString("0x12".to_string()),
-        Token::Punc(":".to_string()),
         Token::Literal("foo".to_string()),
-        Token::Punc(";".to_string()),
         Token::Literal("bar".to_string()),
       ];
       let result = tokenizer::message(message);
