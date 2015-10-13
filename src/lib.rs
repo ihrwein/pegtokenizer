@@ -6,44 +6,63 @@ pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
     Paren(Vec<Token>),
+    Punc(String),
     Literal(String),
     Float(String),
     Int(String),
     HexString(String),
     MAC(String),
     IPv4(String),
+    Space
 }
 peg! tokenizer(r##"
 use super::Token;
 
 #[pub]
-message -> Vec<Token> = token_seq
-
-token_seq -> Vec<Token> = token ** space
+message -> Vec<Token>
+    = token+
 
 token -> Token
-  = brace_token
-  / bracket_token
-  / paren_token
-  / hex_token
+    = token:composite_token { token }
+    / token:simple_token { token }
+
+composite_token -> Token
+    = token:brace_token { token }
+  / token:bracket_token { token }
+  / token:paren_token { token }
+
+simple_token -> Token
+    = hex_token
   / ipv4_token
   / mac_token
   / float_token
   / int_token
+  / punctuation_token
+  / space_token
   / literal_token
 
+space_token -> Token
+    = " " { Token::Space }
+
 literal_token -> Token
-    = (!" " .)+ { Token::Literal(match_str.to_string()) }
-    / .+ { Token::Literal(match_str.to_string()) }
+    = (![{()}] !"[" !"]" !punctuation_token .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
-    = "{" tokens:token_seq "}" { Token::Brace(tokens) }
+    = "{" tokens:token+ "}" { Token::Brace(tokens) }
 
 bracket_token -> Token
-    = "[" tokens:token_seq "]" { Token::Bracket(tokens) }
+    = "[" tokens:token+ "]" { Token::Bracket(tokens) }
 
 paren_token -> Token
-    = "(" tokens:token_seq ")" { Token::Paren(tokens) }
+    = "(" tokens:token+ ")" { Token::Paren(tokens) }
+
+punctuation_token -> Token
+    = punctuations { Token::Punc(match_str.to_string()) }
+
+punctuations
+    = ";"
+    / ":"
+    / ","
 
 float_token -> Token
     = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
@@ -151,7 +170,9 @@ mod tests {
       let message = "42 56:84:7a:fe:97:99 192.168.0.1";
       let expected = vec![
         Token::Int("42".to_string()),
+        Token::Space,
         Token::MAC("56:84:7a:fe:97:99".to_string()),
+        Token::Space,
         Token::IPv4("192.168.0.1".to_string()),
       ];
       let result = tokenizer::message(message);
@@ -207,6 +228,7 @@ mod tests {
       let expected = vec![
         Token::Brace(vec![
             Token::Int("42".to_string()),
+            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
@@ -222,6 +244,7 @@ mod tests {
       let expected = vec![
         Token::Bracket(vec![
             Token::Int("42".to_string()),
+            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
@@ -237,12 +260,31 @@ mod tests {
       let expected = vec![
         Token::Paren(vec![
             Token::Int("42".to_string()),
+            Token::Space,
             Token::HexString("0x12".to_string()),
         ])
       ];
       let result = tokenizer::message(message);
       println!("{:?}", &result);
       let token = result.ok().expect("Failed to parse a valid message when it contains parentheses");
+      assert_eq!(&expected, &token);
+    }
+
+    #[test]
+    fn test_given_tokenizer_when_it_parses_tokens_separated_by_punctuation_marks_then_we_get_the_expected_composite_token() {
+      let message = "42,0x12:foo;bar";
+      let expected = vec![
+        Token::Int("42".to_string()),
+        Token::Punc(",".to_string()),
+        Token::HexString("0x12".to_string()),
+        Token::Punc(":".to_string()),
+        Token::Literal("foo".to_string()),
+        Token::Punc(";".to_string()),
+        Token::Literal("bar".to_string()),
+      ];
+      let result = tokenizer::message(message);
+      println!("{:?}", &result);
+      let token = result.ok().expect("Failed to parse a valid message when the tokens are separated with punctuation marks");
       assert_eq!(&expected, &token);
     }
 }
