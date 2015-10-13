@@ -1,6 +1,9 @@
 #![feature(plugin)]
 #![plugin(peg_syntax_ext)]
 
+#[macro_use]
+mod macros;
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Token {
     Brace(Vec<Token>),
@@ -140,17 +143,17 @@ mod tests {
     }
 
     fn assert_mac_token_is_valid(message: &str) {
-      let expected =  vec![Token::MAC(message.to_string())];
+      let expected =  vec![mac!(message)];
       parse_and_assert_eq(message, expected, "Failed to parse a valid MAC address");
     }
 
     fn assert_hex_string_token_is_valid(message: &str) {
-      let expected =  vec![Token::HexString(message.to_string())];
+      let expected =  vec![hexstring!(message)];
       parse_and_assert_eq(message, expected, "Failed to parse a valid HexString address");
     }
 
     fn assert_float_token_is_valid(message: &str) {
-      let expected =  vec![Token::Float(message.to_string())];
+      let expected =  vec![float!(message)];
       parse_and_assert_eq(message, expected, "Failed to parse a valid Float address");
     }
 
@@ -167,7 +170,7 @@ mod tests {
     #[test]
     fn test_given_tokenizer_when_it_parses_an_integer_then_we_get_the_int_token() {
       let message = "42";
-      let expected =  vec![Token::Int(message.to_string())];
+      let expected =  vec![int!(message)];
       parse_and_assert_eq(message, expected, "Failed to parse a valid Int address");
     }
 
@@ -175,9 +178,9 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_separated_with_space_characters_then_we_got_the_tokens() {
       let message = "42 56:84:7a:fe:97:99 192.168.0.1";
       let expected = vec![
-        Token::Int("42".to_string()),
-        Token::MAC("56:84:7a:fe:97:99".to_string()),
-        Token::IPv4("192.168.0.1".to_string()),
+        int!("42"),
+        mac!("56:84:7a:fe:97:99"),
+        ipv4!("192.168.0.1"),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains spaces");
     }
@@ -185,7 +188,7 @@ mod tests {
     #[test]
     fn test_given_tokenizer_when_it_parses_an_ipv4_address_then_we_get_an_ipv4_token() {
       let message = "127.0.0.1";
-      let expected =  vec![Token::IPv4("127.0.0.1".to_string())];
+      let expected =  vec![ipv4!("127.0.0.1")];
       parse_and_assert_eq(message, expected, "Failed to parse a valid IPv4 token");
     }
 
@@ -213,7 +216,7 @@ mod tests {
     #[test]
     fn test_given_tokenizer_when_there_is_no_other_higher_precedence_match_it_creates_literal_tokens() {
         let message = "foo";
-        let expected =  vec![Token::Literal("foo".to_string())];
+        let expected =  vec![literal!("foo")];
         parse_and_assert_eq(message, expected, "Failed to parse a valid literal token");
     }
 
@@ -221,9 +224,9 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_in_braces_then_we_get_the_expected_composite_token() {
       let message = "{42 0x12}";
       let expected = vec![
-        Token::Brace(vec![
-            Token::Int("42".to_string()),
-            Token::HexString("0x12".to_string()),
+        brace!(vec![
+            int!("42"),
+            hexstring!("0x12"),
         ])
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains braces");
@@ -233,9 +236,9 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_in_brackets_then_we_get_the_expected_composite_token() {
       let message = "[42 0x12]";
       let expected = vec![
-        Token::Bracket(vec![
-            Token::Int("42".to_string()),
-            Token::HexString("0x12".to_string()),
+        bracket!(vec![
+            int!("42"),
+            hexstring!("0x12"),
         ])
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains brackets");
@@ -245,9 +248,9 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_in_parentheses_then_we_get_the_expected_composite_token() {
       let message = "(42 0x12)";
       let expected = vec![
-        Token::Paren(vec![
-            Token::Int("42".to_string()),
-            Token::HexString("0x12".to_string()),
+        paren!(vec![
+            int!("42"),
+            hexstring!("0x12"),
         ])
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains parentheses");
@@ -257,10 +260,10 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_separated_by_punctuation_marks_then_we_get_the_expected_composite_token() {
       let message = "42,0x12:foo;bar";
       let expected = vec![
-        Token::Int("42".to_string()),
-        Token::HexString("0x12".to_string()),
-        Token::Literal("foo".to_string()),
-        Token::Literal("bar".to_string()),
+        int!("42"),
+        hexstring!("0x12"),
+        literal!("foo"),
+        literal!("bar"),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when the tokens are separated with punctuation marks");
     }
@@ -269,11 +272,11 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_tokens_in_parens_then_we_get_the_expected_composite_token() {
       let message = "(xid=0x37fe20e3)";
       let expected = vec![
-        Token::Paren(
+        paren!(
             vec![
-                Token::KVPair(
-                    Box::new(Token::Literal("xid".to_string())),
-                    vec![Token::HexString("0x37fe20e3".to_string())]
+                kvpair!(
+                    Box::new(literal!("xid")),
+                    vec![hexstring!("0x37fe20e3")]
                 )
             ]
         )
@@ -285,20 +288,20 @@ mod tests {
     fn test_given_tokenizer_when_it_parses_a_log_message_then_we_get_the_expected_tokens() {
       let message = "dhclient: DHCPREQUEST of 10.30.0.97 on eth0 to 255.255.255.255 port 67 (xid=0x37fe20e3)";
       let expected = vec![
-        Token::Literal("dhclient".to_string()),
-        Token::Literal("DHCPREQUEST".to_string()),
-        Token::Literal("of".to_string()),
-        Token::IPv4("10.30.0.97".to_string()),
-        Token::Literal("on".to_string()),
-        Token::Literal("eth0".to_string()),
-        Token::Literal("to".to_string()),
-        Token::IPv4("255.255.255.255".to_string()),
-        Token::Literal("port".to_string()),
-        Token::Int("67".to_string()),
-        Token::Paren(vec![
-            Token::KVPair(
-                Box::new(Token::Literal("xid".to_string())),
-                vec![Token::HexString("0x37fe20e3".to_string())]
+        literal!("dhclient"),
+        literal!("DHCPREQUEST"),
+        literal!("of"),
+        ipv4!("10.30.0.97"),
+        literal!("on"),
+        literal!("eth0"),
+        literal!("to"),
+        ipv4!("255.255.255.255"),
+        literal!("port"),
+        int!("67"),
+        paren!(vec![
+            kvpair!(
+                Box::new(literal!("xid")),
+                vec![hexstring!("0x37fe20e3")]
             )]
         ),
       ];
@@ -309,17 +312,17 @@ mod tests {
   fn test_given_tokenizer_when_it_parses_key_value_pairs_in_sequence_then_we_get_the_expected_tokens() {
       let message = "foo=bar qux=42 42=42";
       let expected = vec![
-        Token::KVPair(
-            Box::new(Token::Literal("foo".to_string())),
-            vec![Token::Literal("bar".to_string())]
+        kvpair!(
+            Box::new(literal!("foo")),
+            vec![literal!("bar")]
         ),
-        Token::KVPair(
-            Box::new(Token::Literal("qux".to_string())),
-            vec![Token::Int("42".to_string())]
+        kvpair!(
+            Box::new(literal!("qux")),
+            vec![int!("42")]
         ),
-        Token::KVPair(
-            Box::new(Token::Int("42".to_string())),
-            vec![Token::Int("42".to_string())]
+        kvpair!(
+            Box::new(int!("42")),
+            vec![int!("42")]
         )
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pairs");
@@ -329,14 +332,14 @@ mod tests {
   fn test_given_tokenizer_when_it_parses_a_key_value_pair_and_the_value_is_not_a_simple_token_then_we_get_the_expected_tokens() {
       let message = "msg=audit(1364481363.243:24287)";
       let expected = vec![
-        Token::KVPair(
-            Box::new(Token::Literal("msg".to_string())),
+        kvpair!(
+            Box::new(literal!("msg")),
             vec![
-                Token::Literal("audit".to_string()),
-                Token::Paren(
+                literal!("audit"),
+                paren!(
                     vec![
-                        Token::Float("1364481363.243".to_string()),
-                        Token::Int("24287".to_string())
+                        float!("1364481363.243"),
+                        int!("24287")
                     ]
                 )
             ]
@@ -349,10 +352,10 @@ mod tests {
   fn test_given_tokenizer_when_it_parses_a_quoted_string_then_we_get_the_expected_token() {
       let message = r#"exe="/bin/cat""#;
       let expected = vec![
-        Token::KVPair(
-            Box::new(Token::Literal("exe".to_string())),
+        kvpair!(
+            Box::new(literal!("exe")),
             vec![
-                Token::QuotedLiteral(r#""/bin/cat""#.to_string()),
+                qliteral!(r#""/bin/cat""#),
             ]
         ),
       ];
@@ -363,10 +366,10 @@ mod tests {
   fn test_given_tokenizer_when_it_parses_a_quoted_string_with_apostrophe_then_we_get_the_expected_token() {
       let message = r#"exe='/bin/cat'"#;
       let expected = vec![
-        Token::KVPair(
-            Box::new(Token::Literal("exe".to_string())),
+        kvpair!(
+            Box::new(literal!("exe")),
             vec![
-                Token::QuotedLiteral(r#"'/bin/cat'"#.to_string()),
+                qliteral!(r#"'/bin/cat'"#),
             ]
         ),
       ];
