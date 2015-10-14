@@ -399,8 +399,7 @@ mod tests {
 
   #[test]
   fn test_given_tokenizer_when_it_parses_auditd_log_then_we_get_the_expected_token() {
-      //let message = r#"type=PATH msg=audit(1364481363.243:24287): item=0 name="/etc/ssh/sshd_config" inode=409248 dev=fd:00 mode=0100600 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:etc_t:s0"#;
-      let message = r#"type=PATH msg=audit(1364481363.243:24287): item=0 name="/etc/ssh/sshd_config" inode=409248 dev=fd:00 mode=0100600"#;
+      let message = r#"type=PATH msg=audit(1364481363.243:24287): item=0 name="/etc/ssh/sshd_config" inode=409248 dev=fd:00 mode=0100600 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:etc_t:s0"#;
       let expected = vec![
         kvpair!(
             Box::new(literal!("type")),
@@ -429,6 +428,22 @@ mod tests {
         kvpair!(
             Box::new(literal!("mode")),
             Box::new(literal!("0100600"))
+        ),
+        kvpair!(
+            Box::new(literal!("ouid")),
+            Box::new(literal!("0"))
+        ),
+        kvpair!(
+            Box::new(literal!("ogid")),
+            Box::new(literal!("0"))
+        ),
+        kvpair!(
+            Box::new(literal!("rdev")),
+            Box::new(literal!("00:00"))
+        ),
+        kvpair!(
+            Box::new(literal!("obj")),
+            Box::new(literal!("system_u:object_r:etc_t:s0"))
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse auditd log");
