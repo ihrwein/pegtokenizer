@@ -47,16 +47,21 @@ composite_token -> Token
   / token:kvpair_token { token }
 
 kvpair_token -> Token
-    = key:literal_token "=" value:kvpair_token_value { Token::KVPair(Box::new(key), value) }
+    = key:kvpair_token_key "=" value:kvpair_token_value {
+        Token::KVPair(Box::new(key), Box::new(value))
+     }
+
+kvpair_token_key -> Token
+    = [a-zA-Z0-9_-]+ { Token::Literal(match_str.to_string()) }
 
 kvpair_token_value -> Token
     = t:audit_token { t }
     / l:quoted_literal_token { l }
-    / l:literal_token { l }
+    / (!"}" !"]" !")" !" " .)+ { Token::Literal(match_str.to_string()) }
     / (!" " .)+ { Token::Literal(match_str.to_string()) }
 
 audit_token -> Token
-    = "audit" "(" timestamp:float_token ":" id:int_token ")" { Token::Audit(timestamp, id) }
+    = "audit" "(" timestamp:float ":" id:int ")" { Token::Audit(timestamp.to_string(), id.to_string()) }
 
 simple_token -> Token
     = hex_token
@@ -72,7 +77,7 @@ quoted_literal_token -> Token
     / "'" (!"'" .)+ "'" { Token::QuotedLiteral(match_str.to_string()) }
 
 literal_token -> Token
-    = (!"{" !"}" !"(" !")" !"[" !"]" !space !"=" .)+ { Token::Literal(match_str.to_string()) }
+    = (!"{" !"}" !"(" !")" !"[" !"]" !separators !"=" .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
@@ -89,7 +94,10 @@ punctuation -> &'input str
     / "," { match_str }
 
 float_token -> Token
-    = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { Token::Float(match_str.to_string()) }
+    = f:float { Token::Float(f.to_string()) }
+
+float -> &'input str
+    = [-+]? [0-9]* "."? [0-9]+ ([eE][-+]?[0-9]+)? { match_str }
 
 hex_token -> Token
     = hex_prefix hex_char+ { Token::HexString(match_str.to_string()) }
@@ -108,7 +116,10 @@ octet
     / [0-9]
 
 int_token -> Token
-  = [0-9]+ { Token::Int(match_str.to_string()) }
+    = i:int { Token::Int(i.to_string()) }
+
+int -> &'input str
+  = [0-9]+ { match_str }
 
 mac_token -> Token
   = mac_general_token { Token::MAC(match_str.to_string()) }
@@ -268,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_given_tokenizer_when_it_parses_tokens_separated_by_punctuation_marks_then_we_get_the_expected_composite_token() {
-      let message = "42,0x12:foo;bar";
+      let message = "42,0x12:foo bar";
       let expected = vec![
         int!("42"),
         hexstring!("0x12"),
@@ -286,7 +297,7 @@ mod tests {
             vec![
                 kvpair!(
                     Box::new(literal!("xid")),
-                    Box::new(hexstring!("0x37fe20e3"))
+                    Box::new(literal!("0x37fe20e3"))
                 )
             ]
         )
@@ -311,7 +322,7 @@ mod tests {
         paren!(vec![
             kvpair!(
                 Box::new(literal!("xid")),
-                Box::new(hexstring!("0x37fe20e3"))
+                Box::new(literal!("0x37fe20e3"))
             )]
         ),
       ];
@@ -328,11 +339,11 @@ mod tests {
         ),
         kvpair!(
             Box::new(literal!("qux")),
-            Box::new(int!("42"))
+            Box::new(literal!("42"))
         ),
         kvpair!(
-            Box::new(int!("42")),
-            Box::new(int!("42"))
+            Box::new(literal!("42")),
+            Box::new(literal!("42"))
         )
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pairs");
@@ -401,7 +412,7 @@ mod tests {
         ),
         kvpair!(
             Box::new(literal!("item")),
-            Box::new(int!("0"))
+            Box::new(literal!("0"))
         ),
         kvpair!(
             Box::new(literal!("name")),
@@ -409,7 +420,7 @@ mod tests {
         ),
         kvpair!(
             Box::new(literal!("inode")),
-            Box::new(int!("409248"))
+            Box::new(literal!("409248"))
         ),
         kvpair!(
             Box::new(literal!("dev")),
