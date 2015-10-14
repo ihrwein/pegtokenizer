@@ -26,7 +26,7 @@ message -> Vec<Token>
     = token_seq
 
 token_seq -> Vec<Token>
-    = token ** separators
+    = token ++ separators
 
 separators
     = separator+
@@ -46,7 +46,13 @@ composite_token -> Token
   / token:kvpair_token { token }
 
 kvpair_token -> Token
-    = st0:simple_token "=" t:token+ { Token::KVPair(Box::new(st0), t) }
+    = key:literal_token "=" value:kvpair_token_value { Token::KVPair(Box::new(key), value) }
+
+kvpair_token_value -> Vec<Token>
+    = l:literal_token p:paren_token { vec![l, p] }
+    / l:quoted_literal_token { vec![l] }
+    / l:literal_token { vec![l] }
+    / (!" " .)+ { vec![ Token::Literal(match_str.to_string()) ] }
 
 simple_token -> Token
     = hex_token
@@ -62,7 +68,7 @@ quoted_literal_token -> Token
     / "'" (!"'" .)+ "'" { Token::QuotedLiteral(match_str.to_string()) }
 
 literal_token -> Token
-    = (!"{" !"}" !"(" !")" !"[" !"]" !separator !"=" .)+ { Token::Literal(match_str.to_string()) }
+    = (!"{" !"}" !"(" !")" !"[" !"]" !space !"=" .)+ { Token::Literal(match_str.to_string()) }
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
@@ -138,7 +144,7 @@ mod tests {
     fn parse_and_assert_eq(message: &str, expected: Vec<Token>, error_message: &str) {
       let result = tokenizer::message(message);
       println!("{:?}", &result);
-      let token = result.unwrap_or_else(|err| panic!("{} {:?}", error_message, err));
+      let token = result.ok().expect(error_message);
       assert_eq!(&expected, &token);
     }
 
@@ -374,5 +380,71 @@ mod tests {
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains \" quoted string");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_key_value_pair_and_the_value_consists_of_more_than_one_tokens_then_we_get_the_expected_tokens() {
+    let message = "dev=fd:00";
+    let expected = vec![
+        kvpair!(
+            Box::new(literal!("dev")),
+            vec![
+                literal!("fd:00"),
+            ]
+        )
+    ];
+    parse_and_assert_eq(message, expected, "Failed to parse key-value pair when the value ");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_auditd_log_then_we_get_the_expected_token() {
+      //let message = r#"type=PATH msg=audit(1364481363.243:24287): item=0 name="/etc/ssh/sshd_config" inode=409248 dev=fd:00 mode=0100600 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:etc_t:s0"#;
+      let message = r#"type=PATH msg=audit(1364481363.243:24287): item=0 name="/etc/ssh/sshd_config" inode=409248 dev=fd:00 mode=0100600"#;
+      let expected = vec![
+        kvpair!(
+            Box::new(literal!("type")),
+            vec![literal!("PATH")]
+        ),
+        kvpair!(
+            Box::new(literal!("msg")),
+            vec![
+                literal!("audit"),
+                paren!(
+                    vec![
+                        float!("1364481363.243"),
+                        int!("24287")
+                    ]
+                )
+            ]
+        ),
+        kvpair!(
+            Box::new(literal!("item")),
+            vec![int!("0")]
+        ),
+        kvpair!(
+            Box::new(literal!("name")),
+            vec![
+                qliteral!(r#""/etc/ssh/sshd_config""#),
+            ]
+        ),
+        kvpair!(
+            Box::new(literal!("inode")),
+            vec![int!("409248")]
+        ),
+        kvpair!(
+            Box::new(literal!("dev")),
+            vec![
+                literal!("fd"),
+                int!("00"),
+            ]
+        ),
+        kvpair!(
+            Box::new(literal!("mode")),
+            vec![
+                int!("0100600"),
+            ]
+        ),
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse auditd log");
   }
 }
