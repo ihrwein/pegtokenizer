@@ -9,7 +9,8 @@ pub enum Token {
     Brace(Vec<Token>),
     Bracket(Vec<Token>),
     Paren(Vec<Token>),
-    KVPair(Box<Token>, Vec<Token>),
+    KVPair(Box<Token>, Box<Token>),
+    Audit(String, String),
     Literal(String),
     QuotedLiteral(String),
     Float(String),
@@ -48,11 +49,14 @@ composite_token -> Token
 kvpair_token -> Token
     = key:literal_token "=" value:kvpair_token_value { Token::KVPair(Box::new(key), value) }
 
-kvpair_token_value -> Vec<Token>
-    = l:literal_token p:paren_token { vec![l, p] }
-    / l:quoted_literal_token { vec![l] }
-    / l:literal_token { vec![l] }
-    / (!" " .)+ { vec![ Token::Literal(match_str.to_string()) ] }
+kvpair_token_value -> Token
+    = t:audit_token { t }
+    / l:quoted_literal_token { l }
+    / l:literal_token { l }
+    / (!" " .)+ { Token::Literal(match_str.to_string()) }
+
+audit_token -> Token
+    = "audit" "(" timestamp:float_token ":" id:int_token ")" { Token::Audit(timestamp, id) }
 
 simple_token -> Token
     = hex_token
@@ -282,7 +286,7 @@ mod tests {
             vec![
                 kvpair!(
                     Box::new(literal!("xid")),
-                    vec![hexstring!("0x37fe20e3")]
+                    Box::new(hexstring!("0x37fe20e3"))
                 )
             ]
         )
@@ -307,7 +311,7 @@ mod tests {
         paren!(vec![
             kvpair!(
                 Box::new(literal!("xid")),
-                vec![hexstring!("0x37fe20e3")]
+                Box::new(hexstring!("0x37fe20e3"))
             )]
         ),
       ];
@@ -320,15 +324,15 @@ mod tests {
       let expected = vec![
         kvpair!(
             Box::new(literal!("foo")),
-            vec![literal!("bar")]
+            Box::new(literal!("bar"))
         ),
         kvpair!(
             Box::new(literal!("qux")),
-            vec![int!("42")]
+            Box::new(int!("42"))
         ),
         kvpair!(
             Box::new(int!("42")),
-            vec![int!("42")]
+            Box::new(int!("42"))
         )
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pairs");
@@ -340,15 +344,7 @@ mod tests {
       let expected = vec![
         kvpair!(
             Box::new(literal!("msg")),
-            vec![
-                literal!("audit"),
-                paren!(
-                    vec![
-                        float!("1364481363.243"),
-                        int!("24287")
-                    ]
-                )
-            ]
+            Box::new(audit!("1364481363.243", "24287"))
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid key-value pair when the value is a composite token");
@@ -360,9 +356,7 @@ mod tests {
       let expected = vec![
         kvpair!(
             Box::new(literal!("exe")),
-            vec![
-                qliteral!(r#""/bin/cat""#),
-            ]
+            Box::new(qliteral!(r#""/bin/cat""#))
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains \" quoted string");
@@ -374,9 +368,7 @@ mod tests {
       let expected = vec![
         kvpair!(
             Box::new(literal!("exe")),
-            vec![
-                qliteral!(r#"'/bin/cat'"#),
-            ]
+            Box::new(qliteral!(r#"'/bin/cat'"#))
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a valid message when it contains \" quoted string");
@@ -388,9 +380,7 @@ mod tests {
     let expected = vec![
         kvpair!(
             Box::new(literal!("dev")),
-            vec![
-                literal!("fd:00"),
-            ]
+            Box::new(literal!("fd:00"))
         )
     ];
     parse_and_assert_eq(message, expected, "Failed to parse key-value pair when the value ");
@@ -403,46 +393,31 @@ mod tests {
       let expected = vec![
         kvpair!(
             Box::new(literal!("type")),
-            vec![literal!("PATH")]
+            Box::new(literal!("PATH"))
         ),
         kvpair!(
             Box::new(literal!("msg")),
-            vec![
-                literal!("audit"),
-                paren!(
-                    vec![
-                        float!("1364481363.243"),
-                        int!("24287")
-                    ]
-                )
-            ]
+            Box::new(audit!("1364481363.243", "24287"))
         ),
         kvpair!(
             Box::new(literal!("item")),
-            vec![int!("0")]
+            Box::new(int!("0"))
         ),
         kvpair!(
             Box::new(literal!("name")),
-            vec![
-                qliteral!(r#""/etc/ssh/sshd_config""#),
-            ]
+            Box::new(qliteral!(r#""/etc/ssh/sshd_config""#))
         ),
         kvpair!(
             Box::new(literal!("inode")),
-            vec![int!("409248")]
+            Box::new(int!("409248"))
         ),
         kvpair!(
             Box::new(literal!("dev")),
-            vec![
-                literal!("fd"),
-                int!("00"),
-            ]
+            Box::new(literal!("fd:00"))
         ),
         kvpair!(
             Box::new(literal!("mode")),
-            vec![
-                int!("0100600"),
-            ]
+            Box::new(literal!("0100600"))
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse auditd log");

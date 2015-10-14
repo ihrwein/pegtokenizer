@@ -22,6 +22,12 @@ macro_rules! kvpair {
     }
 }
 
+macro_rules! audit {
+    ($timestamp:expr, $id:expr) => {
+        Token::Audit($timestamp.to_string(), $id.to_string())
+    }
+}
+
 macro_rules! literal {
     ($literal:expr) => {
         Token::Literal($literal.to_string())
@@ -61,5 +67,11 @@ macro_rules! mac {
 macro_rules! ipv4 {
     ($value:expr) => {
         Token::IPv4($value.to_string())
+    }
+}
+
+macro_rules! bokx {
+    ($value:expr) => {
+        Box::new($value)
     }
 }
