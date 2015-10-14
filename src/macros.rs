@@ -1,5 +1,3 @@
-use Token;
-
 macro_rules! brace {
     ($value:expr) => {
         Token::Brace($value)
