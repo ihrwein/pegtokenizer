@@ -509,7 +509,7 @@ mod tests {
   }
 
   #[test]
-  fn test_given_tokenizer_when_it_parses_wpa_supplicant_log_then_we_get_the_contents_of_the_bracket() {
+  fn test_given_tokenizer_when_it_parses_separators_in_brackets_then_we_get_the_expected_tokens() {
       let message = "[ w0: C-E ]";
       let expected = vec![
         bracket!(vec![
@@ -517,7 +517,7 @@ mod tests {
             literal!("C-E"),
         ]),
       ];
-      parse_and_assert_eq(message, expected, "Failed to parse a wpa-supplicant log");
+      parse_and_assert_eq(message, expected, "Failed to parse separators in brackets");
   }
 
   #[test]
