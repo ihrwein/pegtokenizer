@@ -35,7 +35,7 @@ message -> Vec<Token>
     = token_seq
 
 token_seq -> Vec<Token>
-    = token ++ separators
+    = token_expr+
 
 separators
     = separator+
@@ -44,9 +44,12 @@ separator -> &'input str
     = s:space { s }
     / p:punctuation { p }
 
+token_expr -> Token
+    = separators? token:token separators? { token }
+
 token -> Token
-    = separators? token:composite_token { token }
-    / separators? token:simple_token { token }
+    = token:composite_token { token }
+    / token:simple_token  { token }
 
 composite_token -> Token
     = token:brace_token { token }
@@ -92,13 +95,19 @@ quoted_literal_token -> Token
     / "'" (!"'" .)+ "'" { Token::QuotedLiteral(match_str.to_string()) }
 
 literal_token -> Token
-    = (!"{" !"}" !"(" !")" !"[" !"]" !separators !"=" .)+ { Token::Literal(match_str.to_string()) }
+    = (!"{" !"}" !"(" !")" !separators !"=" !BRACKET_OPEN  !BRACKET_CLOSE  .)+ { Token::Literal(match_str.to_string()) }
+
+BRACKET_OPEN
+    = "["
+
+BRACKET_CLOSE
+    = ']'
 
 brace_token -> Token
     = "{" tokens:token_seq "}" { Token::Brace(tokens) }
 
 bracket_token -> Token
-    = "[" tokens:token_seq "]" { Token::Bracket(tokens) }
+    = "[" separators ? tokens:token_seq "]" { Token::Bracket(tokens) }
 
 paren_token -> Token
     = "(" tokens:token_seq ")" { Token::Paren(tokens) }
@@ -497,5 +506,26 @@ mod tests {
         literal!("Initializing"),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse a kernel log");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_wpa_supplicant_log_then_we_get_the_contents_of_the_bracket() {
+      let message = "[ w0: C-E ]";
+      let expected = vec![
+        bracket!(vec![
+            literal!("w0"),
+            literal!("C-E"),
+        ]),
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse a wpa-supplicant log");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_message_where_the_last_characters_are_separators_then_we_get_the_expected_tokens() {
+      let message = "a  ";
+      let expected = vec![
+        literal!("a"),
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse a message where the last tokens are separators");
   }
 }
