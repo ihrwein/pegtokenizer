@@ -171,7 +171,7 @@ hex_char -> &'input str
   = &[0-9a-fA-F] [0-9a-fA-F] { match_str }
 
 space -> &'input str
-    = " "+ { match_str }
+    = " " { match_str }
 
 "##);
 
