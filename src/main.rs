@@ -10,7 +10,7 @@ fn main() {
             Ok(line) => {
                 let tokens = pegtokenizer::tokenize(&line);
                 println!("{:?}", tokens);
-            },
+            }
             Err(error) => {
                 println!("{}", error);
                 break
