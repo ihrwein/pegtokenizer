@@ -11,6 +11,7 @@ pub enum Token {
     Paren(Vec<Token>),
     KVPair(Box<Token>, Box<Token>),
     Audit(String, String),
+    ProgramPid(String, String),
     Literal(String),
     QuotedLiteral(String),
     Float(String),
@@ -19,6 +20,13 @@ pub enum Token {
     MAC(String),
     IPv4(String),
 }
+
+use tokenizer::ParseError;
+
+pub fn tokenize(message: &str) -> Result<Vec<Token>, ParseError> {
+    tokenizer::message(message)
+}
+
 peg! tokenizer(r##"
 use super::Token;
 
@@ -37,14 +45,18 @@ separator -> &'input str
     / p:punctuation { p }
 
 token -> Token
-    = token:composite_token { token }
-    / token:simple_token { token }
+    = separators? token:composite_token { token }
+    / separators? token:simple_token { token }
 
 composite_token -> Token
     = token:brace_token { token }
   / token:bracket_token { token }
   / token:paren_token { token }
   / token:kvpair_token { token }
+  / token:program_pid_token { token }
+
+program_pid_token -> Token
+    = program:key "[" pid:int "]" { Token::ProgramPid(program.to_string(), pid.to_string()) }
 
 kvpair_token -> Token
     = key:kvpair_token_key "=" value:kvpair_token_value {
@@ -52,7 +64,10 @@ kvpair_token -> Token
      }
 
 kvpair_token_key -> Token
-    = [a-zA-Z0-9_-]+ { Token::Literal(match_str.to_string()) }
+    = key { Token::Literal(match_str.to_string()) }
+
+key -> &'input str
+    = [a-zA-Z0-9_-]+ { match_str }
 
 kvpair_token_value -> Token
     = t:audit_token { t }
@@ -447,5 +462,40 @@ mod tests {
         ),
       ];
       parse_and_assert_eq(message, expected, "Failed to parse auditd log");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_message_which_contains_programname_and_pid_then_we_get_the_expected_tokens() {
+      let message = "localhost bluetoothd[723]: Starting SDP server";
+      let expected = vec![
+        literal!("localhost"),
+        progpid!("bluetoothd", "723"),
+        literal!("Starting"),
+        literal!("SDP"),
+        literal!("server"),
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse a log message containing program[PID]");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_adjacent_separators_then_we_get_the_expected_result() {
+      let message = " a";
+      let expected = vec![
+            literal!("a")
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse adjacent separators");
+  }
+
+  #[test]
+  fn test_given_tokenizer_when_it_parses_a_kernel_log_message_then_we_get_the_expected_tokens() {
+      let message = "kernel: [    0.000000] Initializing";
+      let expected = vec![
+        literal!("kernel"),
+        bracket!(vec![
+            float!("0.000000")
+        ]),
+        literal!("Initializing"),
+      ];
+      parse_and_assert_eq(message, expected, "Failed to parse a kernel log");
   }
 }

@@ -70,8 +70,8 @@ macro_rules! ipv4 {
     }
 }
 
-macro_rules! bokx {
-    ($value:expr) => {
-        Box::new($value)
+macro_rules! progpid {
+    ($program:expr, $pid:expr) => {
+        Token::ProgramPid($program.to_string(), $pid.to_string())
     }
 }
