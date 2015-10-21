@@ -4,7 +4,7 @@ A simple log tokenizer written in Rust.
 
 The purpose is to be able to tokenize log messages in most cases.
 
-I run `pegtokenizer` on my notebook's `/var/log/syslog` file and got `344`
+I run `pegtokenizer` on my notebook's `/var/log/syslog` file and got `342`
 success from `344` entries which is above `99.4%`.
 
 ## Requirements
