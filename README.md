@@ -46,7 +46,7 @@ Ok([Literal("Oct"), Int("15"), Int("06"), Int("21"), Int("05"), Literal("localho
 * `Audit`: audit log timestamp & id like `audit(1364481363.243:24287)`
 * `ProgramPid`: `anacron[1198]`
 * `QuotedLiteral`: literals  quoted by `'` or `"`
-* `Float`: a floating point number with optinal exponents
+* `Float`: a floating point number with optional exponents
 * `Int`: `[0-9]+`
 * `HexString`: hex strings with `0x` or `0X` prefix
 * `MAC`: various MAC address formats
